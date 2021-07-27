@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Please configure your Fritz!Box (View: Advanced) > Home Network > Home Network Overview"
+# in "Network Settings" and activate the option "Allow access for applications" (activated by default)!
+
+# Port mapping entries are only allowed for hosts inside of LAN.
+# Furthermore hosts can only add port mapping entries for themselves and not for other hosts in the LAN.
+# It is not intended to allow port mapping entries for the guest network or hosts with IP addresses routed into WAN.
+
+# Tested with Fritz!OS 07.22
+
+################################################################################
+
+# http://fritz.box:49000/tr64desc.xml
+# https://avm.de/service/schnittstellen/
+
+################################################################################
+
+# variables
+# please configure your Fritz!Box IP and login
+FBIP="fritz.box"
+FBUSER="user
+FBPASS="password"
+
+# please configure your Internal Client/Server IP which you want to publish
+internal_client="192.168.178.100"
+
+################################################################################
+
+
+# script, don't change anything here
+if [ "$1" == "0" ]
+        then
+                STATUS="DEACTIVATED!\n"
+elif [ "$1" == "1" ]
+        then
+                STATUS="ACTIVATED!\n"
+fi
+
+location="/upnp/control/wanipconnection1"
+uri="urn:dslforum-org:service:WANIPConnection:1"
+action='AddPortMapping'
+SoapParamString="<NewRemoteHost>0.0.0.0</NewRemoteHost>
+<NewExternalPort>443</NewExternalPort>
+<NewProtocol>TCP</NewProtocol>
+<NewInternalPort>443</NewInternalPort>
+<NewInternalClient>$internal_clientP</NewInternalClient>
+<NewEnabled>$1</NewEnabled>
+<NewPortMappingDescription>HTTPS-Server</NewPortMappingDescription>
+<NewLeaseDuration>0</NewLeaseDuration>"
+
+if [ "$1" == "0" ] || [ "$1" == "1" ]
+        then
+                curl -k -m 5 --anyauth -u "$FBUSER:$FBPASS" https://$FBIP:49443$location -H 'Content-Type: text/xml; charset="utf-8"' -H "SoapAction:$uri#$action" -d "<?xml version='1.0' encoding='utf-8'?><s:Envelope s:encodingStyle='http://schemas.xmlsoap.org/soap/encoding/' xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'><s:Body><u:$action xmlns:u='$uri'>$SoapParamString</u:$action></s:Body></s:Envelope>" -s > /dev/null 2>&1
+                printf "Port sharing: $STATUS"
+        else
+                printf "No expected parameter (0|1) given. Port sharing not activated."
+fi
